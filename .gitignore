@@ -1,0 +1,30 @@
+# Visual Studio temporary files and build results
+#################################
+*.user
+*.suo
+*.sln.docstates
+*.userosscache
+[Dd]ebug/
+[Rr]elease/
+[Bb]in/
+[Oo]bj/
+*.pdb
+*.log
+*.vspscc
+*.vssscc
+*.svn
+
+# Revit add-in specific files
+#################################
+# Ignore compiled DLLs and .addin files that are created in the output directory
+# You will publish these manually or with a build script, so they should not be in version control
+**/*.dll
+**/*.addin
+
+# Exclude the entire bundle folder from being committed
+# This is where your final distributable files are located
+[Pp]ublish/
+*.bundle/
+**/packages/
+.vs/
+.history

@@ -33,7 +33,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <DebugSymbols>false</DebugSymbols>
-    <OutputPath>src\Application\Publish\RevitAddins.bundle\Contents\</OutputPath>
+    <OutputPath>src\Application\Publish\RevitAddins.bundle\Contents\2025\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <DebugType>none</DebugType>
     <PlatformTarget>x64</PlatformTarget>
@@ -51,18 +51,23 @@
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="CurtainGridFamilyDBAPI">
+      <HintPath>..\..\..\..\..\..\Program Files\Autodesk\Revit 2025\CurtainGridFamilyDBAPI.dll</HintPath>
+    </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="RevitAPI">
-      <HintPath>..\..\..\..\..\..\Program Files\Autodesk\Revit 2023\RevitAPI.dll</HintPath>
+      <HintPath>..\..\..\..\..\..\Program Files\Autodesk\Revit 2025\RevitAPI.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="RevitAPIUI">
-      <HintPath>..\..\..\..\..\..\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
+      <HintPath>..\..\..\..\..\..\Program Files\Autodesk\Revit 2025\RevitAPIUI.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xaml" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -74,17 +79,26 @@
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="src\Application\App.cs" />
-    <Compile Include="src\Application\Commands\Command1.cs" />
     <Compile Include="src\Application\Commands\CountDoorsCommand.cs" />
+    <Compile Include="src\Application\Commands\FirePipeCreation.cs" />
     <Compile Include="src\Application\Commands\GetDocTitleCommand.cs" />
+    <Compile Include="src\Panels\DocumentToolsPanel.cs" />
+    <Compile Include="src\Panels\FireModelingPanel.cs" />
+    <Compile Include="src\Panels\GeneralToolsPanel.cs" />
+    <Compile Include="src\UI\FirePipeSettingsForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="src\UI\RibbonHelper.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="src\Application\Publish\RevitAddins.bundle\Contents\RevitAddins.dll" />
+    <Resource Include="Resources\fire_icon.png" />
+    <Content Include="src\Application\Publish\RevitAddins.bundle\Contents\2025\RevitAddins.addin" />
+    <Content Include="src\Application\Publish\RevitAddins.bundle\Contents\2023\RevitAddins.dll" />
+    <Content Include="src\Application\Publish\RevitAddins.bundle\Contents\2025\RevitAddins.dll" />
     <Content Include="src\Application\Publish\RevitAddins.bundle\PackageContents.xml" />
     <Resource Include="Resources\doc_icon.png" />
     <Resource Include="Resources\door_icon.png" />
-    <Content Include="src\Application\Publish\RevitAddins.bundle\Contents\RevitAddins.addin" />
+    <Content Include="src\Application\Publish\RevitAddins.bundle\Contents\2023\RevitAddins.addin" />
   </ItemGroup>
-  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

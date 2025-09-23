@@ -12,19 +12,41 @@
 *.log
 *.vspscc
 *.vssscc
-*.svn
+*.tmp
+*.bak
+*.ncb
+*.sdf
+*.opensdf
+*.VC.db
+*.VC.opendb
+
+# Visual Studio Upgrade logs
+UpgradeLog*.htm
 
 # Revit add-in specific files
 #################################
-# Ignore compiled DLLs and .addin files that are created in the output directory
-# You will publish these manually or with a build script, so they should not be in version control
+# Ignore compiled DLLs and .addin files in output directories
 **/*.dll
 **/*.addin
 
-# Exclude the entire bundle folder from being committed
-# This is where your final distributable files are located
+# Ignore final distributable folders
 [Pp]ublish/
 *.bundle/
 **/packages/
+
+# VS Code / editor folders
 .vs/
-.history
+.history/
+.vscode/
+
+# Node/JS stuff if you use it
+node_modules/
+dist/
+
+# Ignore Revit temp files if any
+*.rvt.lock
+*.rfa.lock
+
+# Ignore NuGet packages
+*.nupkg
+*.snupkg

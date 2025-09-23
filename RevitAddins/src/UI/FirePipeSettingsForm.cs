@@ -2,103 +2,186 @@
 using Autodesk.Revit.DB.Plumbing;
 using System;
 using System.Linq;
-using System.Windows.Forms; // WinForms namespace
+using SD = System.Drawing;        // Alias for System.Drawing
+using WF = System.Windows.Forms;  // Alias for WinForms
 
 namespace RevitAddins.UI
 {
-    public class FirePipeSettingsForm : System.Windows.Forms.Form
+    public class FirePipeSettingsForm : WF.Form
     {
-        public string SelectedPipeType { get; private set; }
-        public string SelectedSystemType { get; private set; }
-        public Level SelectedLevel { get; private set; }
-        public double Diameter { get; private set; }
+        private WF.Label elementLabel;
+        private WF.Label layerLabel;
+        private WF.ComboBox layerCombo;
 
-        public ComboBox PipeTypeCombo;
-        public ComboBox SystemTypeCombo;
-        public ComboBox LevelCombo;
-        public TextBox DiameterText;
-        private Button OkButton;
+        private WF.Label pipeTypeLabel;
+        private WF.ComboBox pipeTypeCombo;
+
+        private WF.Label systemTypeLabel;
+        private WF.ComboBox systemTypeCombo;
+
+        private WF.Label levelLabel;
+        private WF.ComboBox levelCombo;
+
+        private WF.Label diameterLabel;
+        private WF.TextBox diameterTextBox;
+
+        private WF.Label offsetLabel;
+        private WF.TextBox offsetTextBox;
+
+        private WF.Label offsetOptionsLabel;
+        private WF.RadioButton offset2200;
+        private WF.RadioButton offset2300;
+        private WF.RadioButton offset2400;
+
+        private WF.Button submitButton;
+        private WF.Button cancelButton;
+
+        private Document _doc;
+
+        public string SelectedLayer => layerCombo.SelectedItem?.ToString();
+        public string SelectedPipeType => pipeTypeCombo.SelectedItem?.ToString();
+        public string SelectedSystemType => systemTypeCombo.SelectedItem?.ToString();
+        public Level SelectedLevel => levelCombo.SelectedItem as Level;
+        public double Diameter => double.TryParse(diameterTextBox.Text, out double d) ? d : 0;
+        public double Offset => double.TryParse(offsetTextBox.Text, out double o) ? o : 0;
 
         public FirePipeSettingsForm(Document doc)
         {
-            this.Text = "Fire Pipe Settings";
-            this.Width = 350;
-            this.Height = 250;
-            this.FormBorderStyle = FormBorderStyle.FixedDialog;
-            this.StartPosition = FormStartPosition.CenterScreen;
+            _doc = doc;
+            InitializeComponent();
+        }
+
+        private void InitializeComponent()
+        {
+            // Form properties
+            this.Text = "Pipe Input";
+            this.Size = new SD.Size(400, 550);
+            this.StartPosition = WF.FormStartPosition.CenterScreen;
+            this.BackColor = SD.Color.WhiteSmoke;
+
+            int labelX = 30;
+            int controlX = 200;
+            int y = 20;
+            int spacing = 40;
+
+            // Selected Element ID
+            elementLabel = new WF.Label
+            {
+                Text = "Selected Element ID: None",
+                Location = new SD.Point(labelX, y),
+                AutoSize = true
+            };
+            this.Controls.Add(elementLabel);
+            y += spacing;
+
+            // Layer
+            layerLabel = new WF.Label { Text = "Select Layer:", Location = new SD.Point(labelX, y), AutoSize = true };
+            this.Controls.Add(layerLabel);
+
+            layerCombo = new WF.ComboBox { Location = new SD.Point(controlX, y), Width = 140, DropDownStyle = WF.ComboBoxStyle.DropDownList };
+            // Populate layers from document
+            var layers = new FilteredElementCollector(_doc).OfClass(typeof(Level)).Cast<Level>().Select(l => l.Name).ToArray();
+            layerCombo.Items.AddRange(layers);
+            this.Controls.Add(layerCombo);
+            y += spacing;
 
             // Pipe Type
-            Label label1 = new Label() { Text = "Pipe Type:", Left = 20, Top = 20, Width = 100 };
-            PipeTypeCombo = new ComboBox() { Left = 120, Top = 20, Width = 180, DropDownStyle = ComboBoxStyle.DropDownList };
-            PipeTypeCombo.Items.AddRange(
-                new FilteredElementCollector(doc).OfClass(typeof(PipeType))
-                .Cast<PipeType>().Select(x => x.Name).ToArray()
-            );
+            pipeTypeLabel = new WF.Label { Text = "Select Pipe:", Location = new SD.Point(labelX, y), AutoSize = true };
+            this.Controls.Add(pipeTypeLabel);
+
+            pipeTypeCombo = new WF.ComboBox { Location = new SD.Point(controlX, y), Width = 140, DropDownStyle = WF.ComboBoxStyle.DropDownList };
+            var pipeTypes = new FilteredElementCollector(_doc).OfClass(typeof(PipeType)).Cast<PipeType>().Select(p => p.Name).ToArray();
+            pipeTypeCombo.Items.AddRange(pipeTypes);
+            this.Controls.Add(pipeTypeCombo);
+            y += spacing;
 
             // System Type
-            Label label2 = new Label() { Text = "System Type:", Left = 20, Top = 60, Width = 100 };
-            SystemTypeCombo = new ComboBox() { Left = 120, Top = 60, Width = 180, DropDownStyle = ComboBoxStyle.DropDownList };
-            SystemTypeCombo.Items.AddRange(
-                new FilteredElementCollector(doc).OfClass(typeof(PipingSystemType))
-                .Cast<PipingSystemType>().Select(x => x.Name).ToArray()
-            );
+            systemTypeLabel = new WF.Label { Text = "Select System Pipe Type:", Location = new SD.Point(labelX, y), AutoSize = true };
+            this.Controls.Add(systemTypeLabel);
+
+            systemTypeCombo = new WF.ComboBox { Location = new SD.Point(controlX, y), Width = 140, DropDownStyle = WF.ComboBoxStyle.DropDownList };
+            var systemTypes = new FilteredElementCollector(_doc).OfClass(typeof(PipingSystemType)).Cast<PipingSystemType>().Select(s => s.Name).ToArray();
+            systemTypeCombo.Items.AddRange(systemTypes);
+            this.Controls.Add(systemTypeCombo);
+            y += spacing;
 
             // Level
-            Label label3 = new Label() { Text = "Level:", Left = 20, Top = 100, Width = 100 };
-            LevelCombo = new ComboBox() { Left = 120, Top = 100, Width = 180, DropDownStyle = ComboBoxStyle.DropDownList };
-            LevelCombo.Items.AddRange(
-                new FilteredElementCollector(doc).OfClass(typeof(Level))
-                .Cast<Level>().Select(x => x.Name).ToArray()
-            );
+            levelLabel = new WF.Label { Text = "Selected Level:", Location = new SD.Point(labelX, y), AutoSize = true };
+            this.Controls.Add(levelLabel);
 
-            // Diameter
-            Label label4 = new Label() { Text = "Diameter (mm):", Left = 20, Top = 140, Width = 100 };
-            DiameterText = new TextBox() { Left = 120, Top = 140, Width = 180, Text = "100" };
+            levelCombo = new WF.ComboBox { Location = new SD.Point(controlX, y), Width = 140, DropDownStyle = WF.ComboBoxStyle.DropDownList };
+            var levels = new FilteredElementCollector(_doc).OfClass(typeof(Level)).Cast<Level>().ToArray();
+            levelCombo.Items.AddRange(levels);
+            if (levels.Any()) levelCombo.SelectedItem = levels.First();
+            this.Controls.Add(levelCombo);
+            y += spacing;
 
-            // OK button
-            OkButton = new Button() { Text = "OK", Left = 120, Top = 180, Width = 80 };
-            OkButton.Click += (s, e) =>
+            // Pipe Diameter
+            diameterLabel = new WF.Label { Text = "Pipe Diameter (mm):", Location = new SD.Point(labelX, y), AutoSize = true };
+            this.Controls.Add(diameterLabel);
+
+            diameterTextBox = new WF.TextBox { Location = new SD.Point(controlX, y), Width = 100 };
+            var diameterTip = new WF.ToolTip();
+            diameterTip.SetToolTip(diameterTextBox, "Example: 80");
+            this.Controls.Add(diameterTextBox);
+            y += spacing;
+
+            // Custom Offset
+            offsetLabel = new WF.Label { Text = "Custom Offset (mm):", Location = new SD.Point(labelX, y), AutoSize = true };
+            this.Controls.Add(offsetLabel);
+
+            offsetTextBox = new WF.TextBox { Location = new SD.Point(controlX, y), Width = 100, Text = "2500" };
+            this.Controls.Add(offsetTextBox);
+            y += spacing;
+
+            // Offset Quick Options
+            offsetOptionsLabel = new WF.Label { Text = "Or Select Offset:", Location = new SD.Point(labelX, y), AutoSize = true };
+            this.Controls.Add(offsetOptionsLabel);
+
+            offset2200 = new WF.RadioButton { Text = "2200", Location = new SD.Point(controlX, y), AutoSize = true };
+            offset2300 = new WF.RadioButton { Text = "2300", Location = new SD.Point(controlX + 70, y), AutoSize = true };
+            offset2400 = new WF.RadioButton { Text = "2400", Location = new SD.Point(controlX + 140, y), AutoSize = true };
+
+            offset2200.CheckedChanged += OffsetRadio_CheckedChanged;
+            offset2300.CheckedChanged += OffsetRadio_CheckedChanged;
+            offset2400.CheckedChanged += OffsetRadio_CheckedChanged;
+
+            this.Controls.Add(offset2200);
+            this.Controls.Add(offset2300);
+            this.Controls.Add(offset2400);
+            y += spacing + 10;
+
+            // Submit Button
+            submitButton = new WF.Button { Text = "Submit", Location = new SD.Point(100, y), Width = 80, BackColor = SD.Color.LightGray };
+            submitButton.Click += SubmitButton_Click;
+            this.Controls.Add(submitButton);
+
+            // Cancel Button
+            cancelButton = new WF.Button { Text = "Cancel", Location = new SD.Point(200, y), Width = 80, BackColor = SD.Color.LightGray };
+            cancelButton.Click += (s, e) => this.Close();
+        }
+
+        private void OffsetRadio_CheckedChanged(object sender, EventArgs e)
+        {
+            if (offset2200.Checked) offsetTextBox.Text = "2200";
+            if (offset2300.Checked) offsetTextBox.Text = "2300";
+            if (offset2400.Checked) offsetTextBox.Text = "2400";
+        }
+
+        private void SubmitButton_Click(object sender, EventArgs e)
+        {
+            if (string.IsNullOrEmpty(diameterTextBox.Text) ||
+                pipeTypeCombo.SelectedItem == null ||
+                systemTypeCombo.SelectedItem == null ||
+                levelCombo.SelectedItem == null)
             {
-                if (PipeTypeCombo.SelectedItem == null)
-                {
-                    MessageBox.Show("Please select a Pipe Type.");
-                    return;
-                }
-                if (SystemTypeCombo.SelectedItem == null)
-                {
-                    MessageBox.Show("Please select a System Type.");
-                    return;
-                }
-                if (LevelCombo.SelectedItem == null)
-                {
-                    MessageBox.Show("Please select a Level.");
-                    return;
-                }
-                if (!double.TryParse(DiameterText.Text, out double dia) || dia <= 0)
-                {
-                    MessageBox.Show("Please enter a valid Diameter greater than 0.");
-                    return;
-                }
+                WF.MessageBox.Show("Please fill in all required fields.", "Warning", WF.MessageBoxButtons.OK, WF.MessageBoxIcon.Warning);
+                return;
+            }
 
-                SelectedPipeType = PipeTypeCombo.SelectedItem.ToString();
-                SelectedSystemType = SystemTypeCombo.SelectedItem.ToString();
-                SelectedLevel = new FilteredElementCollector(doc).OfClass(typeof(Level))
-                    .Cast<Level>().First(x => x.Name == LevelCombo.SelectedItem.ToString());
-                Diameter = dia;
-
-                this.DialogResult = System.Windows.Forms.DialogResult.OK;
-                this.Close();
-            };
-
-            this.Controls.Add(label1);
-            this.Controls.Add(PipeTypeCombo);
-            this.Controls.Add(label2);
-            this.Controls.Add(SystemTypeCombo);
-            this.Controls.Add(label3);
-            this.Controls.Add(LevelCombo);
-            this.Controls.Add(label4);
-            this.Controls.Add(DiameterText);
-            this.Controls.Add(OkButton);
+            this.DialogResult = WF.DialogResult.OK;
+            this.Close();
         }
     }
 }
+

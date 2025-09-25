@@ -7,6 +7,8 @@ using RevitAddins.UI;
 using System;
 using System.Linq;
 using System.Windows.Forms;
+using RevitAddins.Helpers;
+
 
 namespace RevitAddins.Application.Commands
 {
@@ -39,13 +41,11 @@ namespace RevitAddins.Application.Commands
             // ✅ Extract layers
             string[] cadLayers = CADLayerUtils.GetCadLayers(cadInstance);
 
-            // Collect MEP pipe types
-            string[] pipeTypes = new FilteredElementCollector(doc)
-                .OfClass(typeof(PipeType))
-                .Cast<PipeType>()
-                .Select(p => p.Name)
-                .ToArray();
+            // Get all pipe types (name → ElementId)
+            var pipeDict = PipeUtils.GetPipeTypeNames(doc);
 
+            // Populate ComboBox with names only
+            string[] pipeTypes = pipeDict.Keys.OrderBy(n => n).ToArray();
             // Collect system types
             string[] systemTypes = new FilteredElementCollector(doc)
                 .OfClass(typeof(PipingSystemType))

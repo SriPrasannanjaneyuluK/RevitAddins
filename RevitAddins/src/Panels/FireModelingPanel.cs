@@ -17,8 +17,9 @@ namespace RevitAddins.Panels
                 "PipeCreateId",
                 "Pipe\nCreate",
                 assemblyPath,
-                "RevitAddins.Commands.FirePipeCreation"
+                "RevitAddins.Application.Commands.FirePipeCreation"
             );
+
 
             pipeCreateButtonData.LargeImage = new BitmapImage(new System.Uri(
                 "pack://application:,,,/RevitAddins;component/Resources/fire_icon.png"));

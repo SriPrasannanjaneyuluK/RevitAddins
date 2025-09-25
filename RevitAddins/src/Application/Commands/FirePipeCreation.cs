@@ -2,55 +2,94 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Plumbing;
 using Autodesk.Revit.UI;
+using RevitAddins.Helpers;  // ✅ use the Helpers version
 using RevitAddins.UI;
+using System;
 using System.Linq;
-using WF = System.Windows.Forms;
+using System.Windows.Forms;
 
-namespace RevitAddins.Commands
+namespace RevitAddins.Application.Commands
 {
     [Transaction(TransactionMode.Manual)]
     public class FirePipeCreation : IExternalCommand
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            var uiDoc = commandData.Application.ActiveUIDocument;
-            var doc = uiDoc.Document;
+            UIDocument uidoc = commandData.Application.ActiveUIDocument;
+            Document doc = uidoc.Document;
 
-            // Select CAD element
-            var selectedIds = uiDoc.Selection.GetElementIds();
-            if (!selectedIds.Any())
+            // Ask user to select CAD
+            Reference cadRef = uidoc.Selection.PickObject(
+                Autodesk.Revit.UI.Selection.ObjectType.Element,
+                new CADSelectionFilter(),
+                "Select a CAD file");
+
+            if (cadRef == null) return Result.Cancelled;
+
+            ImportInstance cadInstance = doc.GetElement(cadRef) as ImportInstance;
+            if (cadInstance == null)
             {
-                WF.MessageBox.Show("Please select a CAD element first.", "Error", WF.MessageBoxButtons.OK, WF.MessageBoxIcon.Error);
+                TaskDialog.Show("Error", "Selected element is not a valid CAD import/link.");
                 return Result.Failed;
             }
 
-            var cadElement = doc.GetElement(selectedIds.First());
-            string cadElementId = cadElement.Name;
+            // ✅ Get the CAD file name properly
+            string cadName = CADLayerUtils.GetCadFileName(cadInstance);
 
-            // Get CAD layers (example using ImportInstance)
-            string[] cadLayers = new string[] { "Layer1", "Layer2", "Layer3" }; // replace with real CAD layer extraction
+            // ✅ Extract layers
+            string[] cadLayers = CADLayerUtils.GetCadLayers(cadInstance);
 
-            using (WF.Form form = new FirePipeSettingsForm(doc, cadElementId, cadLayers))
+            // Collect MEP pipe types
+            string[] pipeTypes = new FilteredElementCollector(doc)
+                .OfClass(typeof(PipeType))
+                .Cast<PipeType>()
+                .Select(p => p.Name)
+                .ToArray();
+
+            // Collect system types
+            string[] systemTypes = new FilteredElementCollector(doc)
+                .OfClass(typeof(PipingSystemType))
+                .Cast<PipingSystemType>()
+                .Select(s => s.Name)
+                .ToArray();
+
+            // Collect levels
+            Level[] levels = new FilteredElementCollector(doc)
+                .OfClass(typeof(Level))
+                .Cast<Level>()
+                .ToArray();
+
+            // Show the settings form
+            FirePipeSettingsForm form = new FirePipeSettingsForm(doc, cadName, cadLayers, pipeTypes, systemTypes, levels);
+            if (form.ShowDialog() == DialogResult.OK)
             {
-                if (form.ShowDialog() != WF.DialogResult.OK)
-                    return Result.Cancelled;
+                string selectedLayer = form.SelectedLayer;
+                string selectedPipeType = form.SelectedPipeType;
+                string selectedSystemType = form.SelectedSystemType;
+                Level selectedLevel = form.SelectedLevel;
+                double diameter = form.Diameter;
+                double offset = form.Offset;
 
-                string selectedLayer = ((FirePipeSettingsForm)form).SelectedLayer;
-                string selectedPipe = ((FirePipeSettingsForm)form).SelectedPipeType;
-                string systemType = ((FirePipeSettingsForm)form).SelectedSystemType;
-                Level level = ((FirePipeSettingsForm)form).SelectedLevel;
-                double diameter = ((FirePipeSettingsForm)form).Diameter;
-                double offset = ((FirePipeSettingsForm)form).Offset;
+                TaskDialog.Show("Info",
+                    $"CAD: {cadName}\n" +
+                    $"Layer: {selectedLayer}\n" +
+                    $"Pipe Type: {selectedPipeType}\n" +
+                    $"System: {selectedSystemType}\n" +
+                    $"Level: {selectedLevel.Name}\n" +
+                    $"Diameter: {diameter} mm\n" +
+                    $"Offset: {offset} mm");
 
-                using (Transaction t = new Transaction(doc, "Create Fire Pipe"))
-                {
-                    t.Start();
-                    // Create pipe logic here
-                    t.Commit();
-                }
+                // TODO: Implement actual pipe creation
             }
 
             return Result.Succeeded;
         }
+    }
+
+    // ✅ Selection filter only for CAD imports/links
+    public class CADSelectionFilter : Autodesk.Revit.UI.Selection.ISelectionFilter
+    {
+        public bool AllowElement(Element elem) => elem is ImportInstance;
+        public bool AllowReference(Reference reference, XYZ position) => false;
     }
 }

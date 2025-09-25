@@ -84,6 +84,8 @@
     <Compile Include="src\Application\Commands\CountDoorsCommand.cs" />
     <Compile Include="src\Application\Commands\FirePipeCreation.cs" />
     <Compile Include="src\Application\Commands\GetDocTitleCommand.cs" />
+    <Compile Include="src\Application\Commands\Helpers\CADLayerUtils.cs" />
+    <Compile Include="src\Application\Commands\Helpers\CADSelectionFilter.cs" />
     <Compile Include="src\Panels\DocumentToolsPanel.cs" />
     <Compile Include="src\Panels\FireModelingPanel.cs" />
     <Compile Include="src\Panels\GeneralToolsPanel.cs" />

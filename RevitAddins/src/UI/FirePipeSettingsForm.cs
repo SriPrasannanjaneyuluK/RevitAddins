@@ -1,9 +1,10 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Plumbing;
 using System;
+using System.Configuration;
 using System.Linq;
-using SD = System.Drawing;        // Alias for System.Drawing
-using WF = System.Windows.Forms;  // Alias for WinForms
+using SD = System.Drawing;         // Alias for Drawing
+using WF = System.Windows.Forms;   // Alias for WinForms
 
 namespace RevitAddins.UI
 {
@@ -38,6 +39,7 @@ namespace RevitAddins.UI
 
         private Document _doc;
 
+        // Properties for retrieving values
         public string SelectedLayer => layerCombo.SelectedItem?.ToString();
         public string SelectedPipeType => pipeTypeCombo.SelectedItem?.ToString();
         public string SelectedSystemType => systemTypeCombo.SelectedItem?.ToString();
@@ -45,13 +47,13 @@ namespace RevitAddins.UI
         public double Diameter => double.TryParse(diameterTextBox.Text, out double d) ? d : 0;
         public double Offset => double.TryParse(offsetTextBox.Text, out double o) ? o : 0;
 
-        public FirePipeSettingsForm(Document doc)
+        public FirePipeSettingsForm(Document doc, string cadElementId, string[] cadLayers)
         {
             _doc = doc;
-            InitializeComponent();
+            InitializeComponent(cadElementId, cadLayers);
         }
 
-        private void InitializeComponent()
+        private void InitializeComponent(string cadElementId, string[] cadLayers)
         {
             // Form properties
             this.Text = "Pipe Input";
@@ -64,24 +66,23 @@ namespace RevitAddins.UI
             int y = 20;
             int spacing = 40;
 
-            // Selected Element ID
+            // Selected Element ID (read-only)
             elementLabel = new WF.Label
             {
-                Text = "Selected Element ID: None",
+                Text = $"Selected Element ID: {cadElementId}",
                 Location = new SD.Point(labelX, y),
                 AutoSize = true
             };
             this.Controls.Add(elementLabel);
             y += spacing;
 
-            // Layer
+            // Layer Selection (CAD layers)
             layerLabel = new WF.Label { Text = "Select Layer:", Location = new SD.Point(labelX, y), AutoSize = true };
             this.Controls.Add(layerLabel);
 
             layerCombo = new WF.ComboBox { Location = new SD.Point(controlX, y), Width = 140, DropDownStyle = WF.ComboBoxStyle.DropDownList };
-            // Populate layers from document
-            var layers = new FilteredElementCollector(_doc).OfClass(typeof(Level)).Cast<Level>().Select(l => l.Name).ToArray();
-            layerCombo.Items.AddRange(layers);
+            layerCombo.Items.AddRange(cadLayers);
+            if (cadLayers.Any()) layerCombo.SelectedIndex = 0;
             this.Controls.Add(layerCombo);
             y += spacing;
 
@@ -90,29 +91,37 @@ namespace RevitAddins.UI
             this.Controls.Add(pipeTypeLabel);
 
             pipeTypeCombo = new WF.ComboBox { Location = new SD.Point(controlX, y), Width = 140, DropDownStyle = WF.ComboBoxStyle.DropDownList };
-            var pipeTypes = new FilteredElementCollector(_doc).OfClass(typeof(PipeType)).Cast<PipeType>().Select(p => p.Name).ToArray();
+            var pipeTypes = new FilteredElementCollector(_doc).OfClass(typeof(PipeType))
+                                .Cast<PipeType>().Select(p => p.Name).ToArray();
             pipeTypeCombo.Items.AddRange(pipeTypes);
+            if (pipeTypes.Any()) pipeTypeCombo.SelectedIndex = 0;
             this.Controls.Add(pipeTypeCombo);
             y += spacing;
 
-            // System Type
+            // System Pipe Type
             systemTypeLabel = new WF.Label { Text = "Select System Pipe Type:", Location = new SD.Point(labelX, y), AutoSize = true };
             this.Controls.Add(systemTypeLabel);
 
             systemTypeCombo = new WF.ComboBox { Location = new SD.Point(controlX, y), Width = 140, DropDownStyle = WF.ComboBoxStyle.DropDownList };
-            var systemTypes = new FilteredElementCollector(_doc).OfClass(typeof(PipingSystemType)).Cast<PipingSystemType>().Select(s => s.Name).ToArray();
+            var systemTypes = new FilteredElementCollector(_doc).OfClass(typeof(PipingSystemType))
+                                  .Cast<PipingSystemType>().Select(s => s.Name).ToArray();
             systemTypeCombo.Items.AddRange(systemTypes);
+            if (systemTypes.Any()) systemTypeCombo.SelectedIndex = 0;
             this.Controls.Add(systemTypeCombo);
             y += spacing;
 
-            // Level
+            // Level Selection
             levelLabel = new WF.Label { Text = "Selected Level:", Location = new SD.Point(labelX, y), AutoSize = true };
             this.Controls.Add(levelLabel);
 
             levelCombo = new WF.ComboBox { Location = new SD.Point(controlX, y), Width = 140, DropDownStyle = WF.ComboBoxStyle.DropDownList };
             var levels = new FilteredElementCollector(_doc).OfClass(typeof(Level)).Cast<Level>().ToArray();
             levelCombo.Items.AddRange(levels);
-            if (levels.Any()) levelCombo.SelectedItem = levels.First();
+            if (levels.Any())
+            {
+                var activeViewLevel = _doc.ActiveView.GenLevel;
+                levelCombo.SelectedItem = activeViewLevel ?? levels.First();
+            }
             this.Controls.Add(levelCombo);
             y += spacing;
 
@@ -123,18 +132,23 @@ namespace RevitAddins.UI
             diameterTextBox = new WF.TextBox { Location = new SD.Point(controlX, y), Width = 100 };
             var diameterTip = new WF.ToolTip();
             diameterTip.SetToolTip(diameterTextBox, "Example: 80");
+            // Autofill from config
+            string defaultDiameter = ConfigurationManager.AppSettings["DefaultPipeDiameter"] ?? "80";
+            diameterTextBox.Text = defaultDiameter;
             this.Controls.Add(diameterTextBox);
             y += spacing;
 
-            // Custom Offset
+            // Offset Input
             offsetLabel = new WF.Label { Text = "Custom Offset (mm):", Location = new SD.Point(labelX, y), AutoSize = true };
             this.Controls.Add(offsetLabel);
 
-            offsetTextBox = new WF.TextBox { Location = new SD.Point(controlX, y), Width = 100, Text = "2500" };
+            offsetTextBox = new WF.TextBox { Location = new SD.Point(controlX, y), Width = 100 };
+            string defaultOffset = ConfigurationManager.AppSettings["DefaultPipeOffset"] ?? "2500";
+            offsetTextBox.Text = defaultOffset;
             this.Controls.Add(offsetTextBox);
             y += spacing;
 
-            // Offset Quick Options
+            // Offset Radio Buttons
             offsetOptionsLabel = new WF.Label { Text = "Or Select Offset:", Location = new SD.Point(labelX, y), AutoSize = true };
             this.Controls.Add(offsetOptionsLabel);
 
@@ -158,7 +172,14 @@ namespace RevitAddins.UI
 
             // Cancel Button
             cancelButton = new WF.Button { Text = "Cancel", Location = new SD.Point(200, y), Width = 80, BackColor = SD.Color.LightGray };
-            cancelButton.Click += (s, e) => this.Close();
+            cancelButton.Click += (s, e) =>
+            {
+                var result = WF.MessageBox.Show("Cancel operation?", "Confirm", WF.MessageBoxButtons.YesNo, WF.MessageBoxIcon.Question);
+                if (result == WF.DialogResult.Yes)
+                    this.DialogResult = WF.DialogResult.Cancel;
+                this.Close();
+            };
+            this.Controls.Add(cancelButton);
         }
 
         private void OffsetRadio_CheckedChanged(object sender, EventArgs e)
@@ -170,12 +191,15 @@ namespace RevitAddins.UI
 
         private void SubmitButton_Click(object sender, EventArgs e)
         {
-            if (string.IsNullOrEmpty(diameterTextBox.Text) ||
-                pipeTypeCombo.SelectedItem == null ||
-                systemTypeCombo.SelectedItem == null ||
-                levelCombo.SelectedItem == null)
+            if (!double.TryParse(diameterTextBox.Text, out double d) || d <= 0)
             {
-                WF.MessageBox.Show("Please fill in all required fields.", "Warning", WF.MessageBoxButtons.OK, WF.MessageBoxIcon.Warning);
+                WF.MessageBox.Show("Enter a valid diameter greater than 0 mm.", "Warning", WF.MessageBoxButtons.OK, WF.MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (pipeTypeCombo.SelectedItem == null || systemTypeCombo.SelectedItem == null || levelCombo.SelectedItem == null)
+            {
+                WF.MessageBox.Show("Please fill all required fields.", "Warning", WF.MessageBoxButtons.OK, WF.MessageBoxIcon.Warning);
                 return;
             }
 
@@ -184,4 +208,3 @@ namespace RevitAddins.UI
         }
     }
 }
-

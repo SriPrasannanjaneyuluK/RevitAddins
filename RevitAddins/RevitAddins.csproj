@@ -65,6 +65,7 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
@@ -90,6 +91,7 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="src\UI\RibbonHelper.cs" />
+    <Compile Include="src\UI\SettingsManager.cs" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Resources\fire_icon.png" />
@@ -100,6 +102,9 @@
     <Resource Include="Resources\doc_icon.png" />
     <Resource Include="Resources\door_icon.png" />
     <Content Include="src\Application\Publish\RevitAddins.bundle\Contents\2023\RevitAddins.addin" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="App.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

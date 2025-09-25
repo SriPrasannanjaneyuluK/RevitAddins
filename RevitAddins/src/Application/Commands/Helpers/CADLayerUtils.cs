@@ -10,24 +10,28 @@ namespace RevitAddins.Helpers
         {
             if (importInstance == null) return "Unknown CAD";
 
-            // 1. Try external file reference (works for Linked CAD)
-            try
+            Document doc = importInstance.Document;
+
+            // Get the type of this ImportInstance
+            ElementId typeId = importInstance.GetTypeId();
+            ElementType type = doc.GetElement(typeId) as ElementType;
+
+            if (type != null)
             {
-                ExternalFileReference extRef = importInstance.GetExternalFileReference();
+                ExternalFileReference extRef = type.GetExternalFileReference();
                 if (extRef != null)
                 {
-                    string path = ModelPathUtils.ConvertModelPathToUserVisiblePath(extRef.GetPath());
-                    if (!string.IsNullOrEmpty(path) && path != "<Not Shared>")
-                        return System.IO.Path.GetFileName(path); // actual DWG file name
+                    ModelPath modelPath = extRef.GetPath();
+                    string userPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(modelPath);
+
+                    if (!string.IsNullOrEmpty(userPath) && userPath != "<Not Shared>")
+                    {
+                        return System.IO.Path.GetFileName(userPath); // e.g. "MySite.dwg"
+                    }
                 }
             }
-            catch
-            {
-                // ignore for Imported CAD
-            }
 
-            // 2. If no external reference → fallback to instance name
-            //    (This is exactly what your pyRevit script uses)
+            // Fallback
             return importInstance.Name;
         }
 

@@ -1,75 +1,129 @@
 ﻿using System;
 using System.Linq;
 using System.Windows.Forms;
-using System.Drawing; // for GUI
+using System.Drawing;
 using Autodesk.Revit.DB;
-
-
+using RevitAddins.Helpers;
+using System.Collections.Generic;
 
 namespace RevitAddins.UI
 {
     public class FirePipeSettingsForm : System.Windows.Forms.Form
     {
-        private System.Windows.Forms.Label elementLabel;
-        private System.Windows.Forms.TextBox elementTextBox;
+        private Label elementLabel;
+        private TextBox elementTextBox;
 
-        private System.Windows.Forms.Label layerLabel;
-        private System.Windows.Forms.ComboBox layerCombo;
+        private Label layerLabel;
+        private ComboBox layerCombo;
 
-        private System.Windows.Forms.Label pipeTypeLabel;
-        private System.Windows.Forms.ComboBox pipeTypeCombo;
+        private Label pipeTypeLabel;
+        private ComboBox pipeTypeCombo;
 
-        private System.Windows.Forms.Label systemTypeLabel;
-        private System.Windows.Forms.ComboBox systemTypeCombo;
+        private Label systemTypeLabel;
+        private ComboBox systemTypeCombo;
 
-        private System.Windows.Forms.Label levelLabel;
-        private System.Windows.Forms.ComboBox levelCombo;
+        private Label levelLabel;
+        private ComboBox levelCombo;
 
-        private System.Windows.Forms.Label diameterLabel;
-        private System.Windows.Forms.TextBox diameterTextBox;
+        private Label diameterLabel;
+        private TextBox diameterTextBox;
 
-        private System.Windows.Forms.Label offsetLabel;
-        private System.Windows.Forms.TextBox offsetTextBox;
+        private Label offsetLabel;
+        private TextBox offsetTextBox;
 
-        private System.Windows.Forms.Label offsetOptionsLabel;
-        private System.Windows.Forms.RadioButton offset2200;
-        private System.Windows.Forms.RadioButton offset2300;
-        private System.Windows.Forms.RadioButton offset2400;
+        private Label offsetOptionsLabel;
+        private RadioButton offset2200;
+        private RadioButton offset2300;
+        private RadioButton offset2400;
 
-        private System.Windows.Forms.Button submitButton;
-        private System.Windows.Forms.Button cancelButton;
+        private Button submitButton;
+        private Button cancelButton;
 
         private Document _doc;
+
+        // dictionaries
+        private Dictionary<string, ElementId> _levelDict;
+        private Dictionary<string, ElementId> _pipeDict;
 
         public double DefaultDiameter { get; set; } = 80;
         public double DefaultOffset { get; set; } = 2500;
 
         public string SelectedLayer => layerCombo.SelectedItem?.ToString();
-        public string SelectedPipeType => pipeTypeCombo.SelectedItem?.ToString();
+        public string SelectedPipeTypeName => pipeTypeCombo.SelectedItem?.ToString();
         public string SelectedSystemType => systemTypeCombo.SelectedItem?.ToString();
-        public Level SelectedLevel => levelCombo.SelectedItem as Level;
+
+        public ElementId SelectedPipeTypeId
+        {
+            get
+            {
+                if (SelectedPipeTypeName != null && _pipeDict.ContainsKey(SelectedPipeTypeName))
+                    return _pipeDict[SelectedPipeTypeName];
+                return ElementId.InvalidElementId;
+            }
+        }
+
+        public ElementId SelectedLevelId
+        {
+            get
+            {
+                string key = levelCombo.SelectedItem?.ToString();
+                if (!string.IsNullOrEmpty(key) && _levelDict.ContainsKey(key))
+                    return _levelDict[key];
+                return ElementId.InvalidElementId;
+            }
+        }
+
         public double Diameter => double.TryParse(diameterTextBox.Text, out double d) ? d : 0;
         public double Offset => double.TryParse(offsetTextBox.Text, out double o) ? o : 0;
 
-        public FirePipeSettingsForm(Document doc, string cadElementId, string[] layers, string[] pipeTypes, string[] systemTypes, Level[] levels)
+        /// <summary>
+        /// Constructor
+        /// - doc: current document
+        /// - cadElementId: string name for the selected CAD (displayed in read-only textbox)
+        /// - layers: array of cad layers (strings)
+        /// - pipeDict: dictionary of displayName -> ElementId (from PipeUtils)
+        /// - systemTypes: array of piping system type names
+        /// </summary>
+        public FirePipeSettingsForm(Document doc, string cadElementId, string[] layers,
+            Dictionary<string, ElementId> pipeDict, string[] systemTypes)
         {
             _doc = doc;
             InitializeComponent();
 
-            elementTextBox.Text = cadElementId;
+            elementTextBox.Text = cadElementId ?? "Unknown";
             elementTextBox.ReadOnly = true;
 
-            layerCombo.Items.AddRange(layers);
-            if (layers.Any()) layerCombo.SelectedIndex = 0;
+            // layers
+            layerCombo.Items.AddRange(layers ?? new string[0]);
+            if (layerCombo.Items.Count > 0) layerCombo.SelectedIndex = 0;
 
-            pipeTypeCombo.Items.AddRange(pipeTypes);
-            if (pipeTypes.Any()) pipeTypeCombo.SelectedIndex = 0;
+            // pipes
+            _pipeDict = pipeDict ?? new Dictionary<string, ElementId>();
+            pipeTypeCombo.Items.AddRange(_pipeDict.Keys.ToArray());
+            if (pipeTypeCombo.Items.Count > 0) pipeTypeCombo.SelectedIndex = 0;
 
-            systemTypeCombo.Items.AddRange(systemTypes);
-            if (systemTypes.Any()) systemTypeCombo.SelectedIndex = 0;
+            // system types
+            systemTypeCombo.Items.AddRange(systemTypes ?? new string[0]);
+            if (systemTypeCombo.Items.Count > 0) systemTypeCombo.SelectedIndex = 0;
 
-            levelCombo.Items.AddRange(levels);
-            if (levels.Any()) levelCombo.SelectedItem = levels.First();
+            // levels via helper
+            _levelDict = LevelUtils.GetLevelDisplayNames(_doc) ?? new Dictionary<string, ElementId>();
+            levelCombo.Items.AddRange(_levelDict.Keys.ToArray());
+
+            // preselect active view level if available
+            var activeLevelId = LevelUtils.GetActiveViewLevelId(_doc);
+            if (activeLevelId != ElementId.InvalidElementId)
+            {
+                var match = _levelDict.FirstOrDefault(kvp => kvp.Value == activeLevelId);
+                if (!string.IsNullOrEmpty(match.Key))
+                    levelCombo.SelectedItem = match.Key;
+                else if (levelCombo.Items.Count > 0)
+                    levelCombo.SelectedIndex = 0;
+            }
+            else if (levelCombo.Items.Count > 0)
+            {
+                levelCombo.SelectedIndex = 0;
+            }
 
             diameterTextBox.Text = DefaultDiameter.ToString();
             offsetTextBox.Text = DefaultOffset.ToString();
@@ -88,61 +142,61 @@ namespace RevitAddins.UI
             int spacing = 40;
 
             // CAD Element ID
-            elementLabel = new System.Windows.Forms.Label { Text = "Selected Element ID:", Location = new System.Drawing.Point(labelX, y), AutoSize = true };
-            elementTextBox = new System.Windows.Forms.TextBox { Location = new System.Drawing.Point(controlX, y), Width = 140, ReadOnly = true };
+            elementLabel = new Label { Text = "Selected Element ID:", Location = new System.Drawing.Point(labelX, y), AutoSize = true };
+            elementTextBox = new TextBox { Location = new System.Drawing.Point(controlX, y), Width = 160, ReadOnly = true };
             this.Controls.Add(elementLabel);
             this.Controls.Add(elementTextBox);
             y += spacing;
 
             // Layer
-            layerLabel = new System.Windows.Forms.Label { Text = "Select Layer:", Location = new System.Drawing.Point(labelX, y), AutoSize = true };
-            layerCombo = new System.Windows.Forms.ComboBox { Location = new System.Drawing.Point(controlX, y), Width = 140, DropDownStyle = ComboBoxStyle.DropDownList };
+            layerLabel = new Label { Text = "Select Layer:", Location = new System.Drawing.Point(labelX, y), AutoSize = true };
+            layerCombo = new ComboBox { Location = new System.Drawing.Point(controlX, y), Width = 160, DropDownStyle = ComboBoxStyle.DropDownList };
             this.Controls.Add(layerLabel);
             this.Controls.Add(layerCombo);
             y += spacing;
 
             // Pipe Type
-            pipeTypeLabel = new System.Windows.Forms.Label { Text = "Select Pipe:", Location = new System.Drawing.Point(labelX, y), AutoSize = true };
-            pipeTypeCombo = new System.Windows.Forms.ComboBox { Location = new System.Drawing.Point(controlX, y), Width = 140, DropDownStyle = ComboBoxStyle.DropDownList };
+            pipeTypeLabel = new Label { Text = "Select Pipe:", Location = new System.Drawing.Point(labelX, y), AutoSize = true };
+            pipeTypeCombo = new ComboBox { Location = new System.Drawing.Point(controlX, y), Width = 160, DropDownStyle = ComboBoxStyle.DropDownList };
             this.Controls.Add(pipeTypeLabel);
             this.Controls.Add(pipeTypeCombo);
             y += spacing;
 
             // System Type
-            systemTypeLabel = new System.Windows.Forms.Label { Text = "Select System Pipe Type:", Location = new System.Drawing.Point(labelX, y), AutoSize = true };
-            systemTypeCombo = new System.Windows.Forms.ComboBox { Location = new System.Drawing.Point(controlX, y), Width = 140, DropDownStyle = ComboBoxStyle.DropDownList };
+            systemTypeLabel = new Label { Text = "Select System Pipe Type:", Location = new System.Drawing.Point(labelX, y), AutoSize = true };
+            systemTypeCombo = new ComboBox { Location = new System.Drawing.Point(controlX, y), Width = 160, DropDownStyle = ComboBoxStyle.DropDownList };
             this.Controls.Add(systemTypeLabel);
             this.Controls.Add(systemTypeCombo);
             y += spacing;
 
             // Level
-            levelLabel = new System.Windows.Forms.Label { Text = "Selected Level:", Location = new System.Drawing.Point(labelX, y), AutoSize = true };
-            levelCombo = new System.Windows.Forms.ComboBox { Location = new System.Drawing.Point(controlX, y), Width = 140, DropDownStyle = ComboBoxStyle.DropDownList };
+            levelLabel = new Label { Text = "Select Level:", Location = new System.Drawing.Point(labelX, y), AutoSize = true };
+            levelCombo = new ComboBox { Location = new System.Drawing.Point(controlX, y), Width = 220, DropDownStyle = ComboBoxStyle.DropDownList };
             this.Controls.Add(levelLabel);
             this.Controls.Add(levelCombo);
             y += spacing;
 
             // Pipe Diameter
-            diameterLabel = new System.Windows.Forms.Label { Text = "Pipe Diameter (mm):", Location = new System.Drawing.Point(labelX, y), AutoSize = true };
-            diameterTextBox = new System.Windows.Forms.TextBox { Location = new System.Drawing.Point(controlX, y), Width = 100 };
-            var diameterTip = new System.Windows.Forms.ToolTip();
+            diameterLabel = new Label { Text = "Pipe Diameter (mm):", Location = new System.Drawing.Point(labelX, y), AutoSize = true };
+            diameterTextBox = new TextBox { Location = new System.Drawing.Point(controlX, y), Width = 100 };
+            var diameterTip = new ToolTip();
             diameterTip.SetToolTip(diameterTextBox, "Enter diameter in mm only");
             this.Controls.Add(diameterLabel);
             this.Controls.Add(diameterTextBox);
             y += spacing;
 
             // Custom Offset
-            offsetLabel = new System.Windows.Forms.Label { Text = "Custom Offset (mm):", Location = new System.Drawing.Point(labelX, y), AutoSize = true };
-            offsetTextBox = new System.Windows.Forms.TextBox { Location = new System.Drawing.Point(controlX, y), Width = 100 };
+            offsetLabel = new Label { Text = "Custom Offset (mm):", Location = new System.Drawing.Point(labelX, y), AutoSize = true };
+            offsetTextBox = new TextBox { Location = new System.Drawing.Point(controlX, y), Width = 100 };
             this.Controls.Add(offsetLabel);
             this.Controls.Add(offsetTextBox);
             y += spacing;
 
             // Offset Quick Options
-            offsetOptionsLabel = new System.Windows.Forms.Label { Text = "Or Select Offset:", Location = new System.Drawing.Point(labelX, y), AutoSize = true };
-            offset2200 = new System.Windows.Forms.RadioButton { Text = "2200", Location = new System.Drawing.Point(controlX, y), AutoSize = true };
-            offset2300 = new System.Windows.Forms.RadioButton { Text = "2300", Location = new System.Drawing.Point(controlX + 70, y), AutoSize = true };
-            offset2400 = new System.Windows.Forms.RadioButton { Text = "2400", Location = new System.Drawing.Point(controlX + 140, y), AutoSize = true };
+            offsetOptionsLabel = new Label { Text = "Or Select Offset:", Location = new System.Drawing.Point(labelX, y), AutoSize = true };
+            offset2200 = new RadioButton { Text = "2200", Location = new System.Drawing.Point(controlX, y), AutoSize = true };
+            offset2300 = new RadioButton { Text = "2300", Location = new System.Drawing.Point(controlX + 70, y), AutoSize = true };
+            offset2400 = new RadioButton { Text = "2400", Location = new System.Drawing.Point(controlX + 140, y), AutoSize = true };
 
             offset2200.CheckedChanged += OffsetRadio_CheckedChanged;
             offset2300.CheckedChanged += OffsetRadio_CheckedChanged;
@@ -155,13 +209,13 @@ namespace RevitAddins.UI
             y += spacing + 10;
 
             // Submit & Cancel
-            submitButton = new System.Windows.Forms.Button { Text = "Submit", Location = new System.Drawing.Point(100, y), Width = 80, BackColor = System.Drawing.Color.LightGray };
-            cancelButton = new System.Windows.Forms.Button { Text = "Cancel", Location = new System.Drawing.Point(200, y), Width = 80, BackColor = System.Drawing.Color.LightGray };
+            submitButton = new Button { Text = "Submit", Location = new System.Drawing.Point(100, y), Width = 80, BackColor = System.Drawing.Color.LightGray };
+            cancelButton = new Button { Text = "Cancel", Location = new System.Drawing.Point(200, y), Width = 80, BackColor = System.Drawing.Color.LightGray };
 
             submitButton.Click += SubmitButton_Click;
             cancelButton.Click += (s, e) =>
             {
-                if (System.Windows.Forms.MessageBox.Show("Cancel operation?", "Confirm", MessageBoxButtons.YesNo) == System.Windows.Forms.DialogResult.Yes)
+                if (MessageBox.Show("Cancel operation?", "Confirm", MessageBoxButtons.YesNo) == DialogResult.Yes)
                     this.Close();
             };
 
@@ -180,17 +234,17 @@ namespace RevitAddins.UI
         {
             if (!double.TryParse(diameterTextBox.Text, out double d) || d <= 0)
             {
-                System.Windows.Forms.MessageBox.Show("Enter valid diameter (>0 mm).", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Enter valid diameter (>0 mm).", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
             if (layerCombo.SelectedItem == null || pipeTypeCombo.SelectedItem == null || systemTypeCombo.SelectedItem == null || levelCombo.SelectedItem == null)
             {
-                System.Windows.Forms.MessageBox.Show("Please fill all required fields.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Please fill all required fields.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            this.DialogResult = System.Windows.Forms.DialogResult.OK;
+            this.DialogResult = DialogResult.OK;
             this.Close();
         }
     }

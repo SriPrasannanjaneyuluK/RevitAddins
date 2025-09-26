@@ -2,13 +2,11 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Plumbing;
 using Autodesk.Revit.UI;
-using RevitAddins.Helpers;  // ✅ use the Helpers version
 using RevitAddins.UI;
-using System;
+using RevitAddins.Helpers;
 using System.Linq;
 using System.Windows.Forms;
-using RevitAddins.Helpers;
-
+using System.Collections.Generic;
 
 namespace RevitAddins.Application.Commands
 {
@@ -20,12 +18,8 @@ namespace RevitAddins.Application.Commands
             UIDocument uidoc = commandData.Application.ActiveUIDocument;
             Document doc = uidoc.Document;
 
-            // Ask user to select CAD
-            Reference cadRef = uidoc.Selection.PickObject(
-                Autodesk.Revit.UI.Selection.ObjectType.Element,
-                new CADSelectionFilter(),
-                "Select a CAD file");
-
+            // Ask user to select CAD import/link
+            Reference cadRef = uidoc.Selection.PickObject(Autodesk.Revit.UI.Selection.ObjectType.Element, new CADSelectionFilter(), "Select a CAD file");
             if (cadRef == null) return Result.Cancelled;
 
             ImportInstance cadInstance = doc.GetElement(cadRef) as ImportInstance;
@@ -35,61 +29,63 @@ namespace RevitAddins.Application.Commands
                 return Result.Failed;
             }
 
-            // ✅ Get the CAD file name properly
+            // Get CAD filename and layers via CADLayerUtils (your helper)
             string cadName = CADLayerUtils.GetCadFileName(cadInstance);
-
-            // ✅ Extract layers
             string[] cadLayers = CADLayerUtils.GetCadLayers(cadInstance);
 
-            // Get all pipe types (name → ElementId)
-            var pipeDict = PipeUtils.GetPipeTypeNames(doc);
+            // Pipe types: name -> ElementId
+            Dictionary<string, ElementId> pipeDict = PipeUtils.GetPipeTypeNames(doc);
 
-            // Populate ComboBox with names only
-            string[] pipeTypes = pipeDict.Keys.OrderBy(n => n).ToArray();
-            // Collect system types
+            // System types (names)
             string[] systemTypes = new FilteredElementCollector(doc)
                 .OfClass(typeof(PipingSystemType))
                 .Cast<PipingSystemType>()
                 .Select(s => s.Name)
                 .ToArray();
 
-            // Collect levels
-            Level[] levels = new FilteredElementCollector(doc)
-                .OfClass(typeof(Level))
-                .Cast<Level>()
-                .ToArray();
-
-            // Show the settings form
-            FirePipeSettingsForm form = new FirePipeSettingsForm(doc, cadName, cadLayers, pipeTypes, systemTypes, levels);
-            if (form.ShowDialog() == DialogResult.OK)
+            // Show form (pass pipeDict)
+            using (var form = new FirePipeSettingsForm(doc, cadName, cadLayers, pipeDict, systemTypes))
             {
-                string selectedLayer = form.SelectedLayer;
-                string selectedPipeType = form.SelectedPipeType;
-                string selectedSystemType = form.SelectedSystemType;
-                Level selectedLevel = form.SelectedLevel;
-                double diameter = form.Diameter;
-                double offset = form.Offset;
+                if (form.ShowDialog() == DialogResult.OK)
+                {
+                    string selectedLayer = form.SelectedLayer;
+                    string selectedPipeName = form.SelectedPipeTypeName;
+                    ElementId selectedPipeTypeId = form.SelectedPipeTypeId;
+                    string selectedSystemType = form.SelectedSystemType;
+                    ElementId selectedLevelId = form.SelectedLevelId;
+                    double diameter = form.Diameter;
+                    double offset = form.Offset;
 
-                TaskDialog.Show("Info",
-                    $"CAD: {cadName}\n" +
-                    $"Layer: {selectedLayer}\n" +
-                    $"Pipe Type: {selectedPipeType}\n" +
-                    $"System: {selectedSystemType}\n" +
-                    $"Level: {selectedLevel.Name}\n" +
-                    $"Diameter: {diameter} mm\n" +
-                    $"Offset: {offset} mm");
+                    Level selectedLevel = doc.GetElement(selectedLevelId) as Level;
 
-                // TODO: Implement actual pipe creation
+                    TaskDialog.Show("Info",
+                        $"CAD: {cadName}\n" +
+                        $"Layer: {selectedLayer}\n" +
+                        $"Pipe Type: {selectedPipeName} (Id: {selectedPipeTypeId.IntegerValue})\n" +
+                        $"System: {selectedSystemType}\n" +
+                        $"Level: {selectedLevel?.Name}\n" +
+                        $"Diameter: {diameter} mm\n" +
+                        $"Offset: {offset} mm");
+
+                    // TODO: Implement pipe creation logic using selectedPipeTypeId, selectedLevelId, diameter, etc.
+                }
             }
 
             return Result.Succeeded;
         }
     }
 
-    // ✅ Selection filter only for CAD imports/links
+    // Selection filter for CAD imports / links
     public class CADSelectionFilter : Autodesk.Revit.UI.Selection.ISelectionFilter
     {
-        public bool AllowElement(Element elem) => elem is ImportInstance;
-        public bool AllowReference(Reference reference, XYZ position) => false;
+        public bool AllowElement(Element elem)
+        {
+            return elem is ImportInstance;
+        }
+
+        public bool AllowReference(Autodesk.Revit.DB.Reference reference, Autodesk.Revit.DB.XYZ position)
+        {
+            return false;
+        }
     }
 }

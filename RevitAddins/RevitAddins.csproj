@@ -86,6 +86,7 @@
     <Compile Include="src\Application\Commands\GetDocTitleCommand.cs" />
     <Compile Include="src\Application\Commands\Helpers\CADLayerUtils.cs" />
     <Compile Include="src\Application\Commands\Helpers\CADSelectionFilter.cs" />
+    <Compile Include="src\Application\Commands\Helpers\LevelUtils.cs" />
     <Compile Include="src\Application\Commands\Helpers\PipeUtils.cs" />
     <Compile Include="src\Panels\DocumentToolsPanel.cs" />
     <Compile Include="src\Panels\FireModelingPanel.cs" />

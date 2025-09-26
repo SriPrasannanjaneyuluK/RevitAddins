@@ -1,12 +1,10 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.Plumbing;
 using Autodesk.Revit.UI;
-using RevitAddins.UI;
 using RevitAddins.Helpers;
-using System.Linq;
-using System.Windows.Forms;
+using RevitAddins.UI;
 using System.Collections.Generic;
+using System.Windows.Forms;
 
 namespace RevitAddins.Application.Commands
 {
@@ -18,71 +16,25 @@ namespace RevitAddins.Application.Commands
             UIDocument uidoc = commandData.Application.ActiveUIDocument;
             Document doc = uidoc.Document;
 
-            // Ask user to select CAD import/link
             Reference cadRef = uidoc.Selection.PickObject(Autodesk.Revit.UI.Selection.ObjectType.Element, new CADSelectionFilter(), "Select a CAD file");
             if (cadRef == null) return Result.Cancelled;
 
-            ImportInstance cadInstance = doc.GetElement(cadRef) as ImportInstance;
-            if (cadInstance == null)
-            {
-                TaskDialog.Show("Error", "Selected element is not a valid CAD import/link.");
-                return Result.Failed;
-            }
+            var cadInstance = doc.GetElement(cadRef) as Autodesk.Revit.DB.ImportInstance;
+            if (cadInstance == null) { TaskDialog.Show("Error", "Selected element is not a valid CAD."); return Result.Failed; }
 
-            // Get CAD filename and layers via CADLayerUtils (your helper)
             string cadName = CADLayerUtils.GetCadFileName(cadInstance);
             string[] cadLayers = CADLayerUtils.GetCadLayers(cadInstance);
+            Dictionary<string, Autodesk.Revit.DB.ElementId> pipeDict = PipeUtils.GetPipeTypeNames(doc);
 
-            // Pipe types: name -> ElementId
-            Dictionary<string, ElementId> pipeDict = PipeUtils.GetPipeTypeNames(doc);
-
-            // System types via helper
-            string[] systemTypes = SystemTypeUtils.GetSystemTypeNames(doc);
-
-
-            // Show form (pass pipeDict)
-            using (var form = new FirePipeSettingsForm(doc, cadName, cadLayers, pipeDict))
+            using (var form = FormFactory.CreatePipeSettingsForm(doc, cadName, cadLayers, pipeDict))
             {
                 if (form.ShowDialog() == DialogResult.OK)
                 {
-                    string selectedLayer = form.SelectedLayer;
-                    string selectedPipeName = form.SelectedPipeTypeName;
-                    ElementId selectedPipeTypeId = form.SelectedPipeTypeId;
-                    string selectedSystemType = form.SelectedSystemType;
-                    ElementId selectedLevelId = form.SelectedLevelId;
-                    double diameter = form.Diameter;
-                    double offset = form.Offset;
-
-                    Level selectedLevel = doc.GetElement(selectedLevelId) as Level;
-
-                    TaskDialog.Show("Info",
-                        $"CAD: {cadName}\n" +
-                        $"Layer: {selectedLayer}\n" +
-                        $"Pipe Type: {selectedPipeName} (Id: {selectedPipeTypeId.IntegerValue})\n" +
-                        $"System: {selectedSystemType}\n" +
-                        $"Level: {selectedLevel?.Name}\n" +
-                        $"Diameter: {diameter} mm\n" +
-                        $"Offset: {offset} mm");
-
-                    // TODO: Implement pipe creation logic using selectedPipeTypeId, selectedLevelId, diameter, etc.
+                    // Extract values from form controls if needed
                 }
             }
 
             return Result.Succeeded;
-        }
-    }
-
-    // Selection filter for CAD imports / links
-    public class CADSelectionFilter : Autodesk.Revit.UI.Selection.ISelectionFilter
-    {
-        public bool AllowElement(Element elem)
-        {
-            return elem is ImportInstance;
-        }
-
-        public bool AllowReference(Autodesk.Revit.DB.Reference reference, Autodesk.Revit.DB.XYZ position)
-        {
-            return false;
         }
     }
 }

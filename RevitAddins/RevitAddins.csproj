@@ -95,6 +95,7 @@
     <Compile Include="src\UI\FirePipeSettingsForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="src\UI\FormFactory.cs" />
     <Compile Include="src\UI\RibbonHelper.cs" />
     <Compile Include="src\UI\SettingsManager.cs" />
   </ItemGroup>

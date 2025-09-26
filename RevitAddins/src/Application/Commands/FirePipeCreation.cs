@@ -36,15 +36,12 @@ namespace RevitAddins.Application.Commands
             // Pipe types: name -> ElementId
             Dictionary<string, ElementId> pipeDict = PipeUtils.GetPipeTypeNames(doc);
 
-            // System types (names)
-            string[] systemTypes = new FilteredElementCollector(doc)
-                .OfClass(typeof(PipingSystemType))
-                .Cast<PipingSystemType>()
-                .Select(s => s.Name)
-                .ToArray();
+            // System types via helper
+            string[] systemTypes = SystemTypeUtils.GetSystemTypeNames(doc);
+
 
             // Show form (pass pipeDict)
-            using (var form = new FirePipeSettingsForm(doc, cadName, cadLayers, pipeDict, systemTypes))
+            using (var form = new FirePipeSettingsForm(doc, cadName, cadLayers, pipeDict))
             {
                 if (form.ShowDialog() == DialogResult.OK)
                 {

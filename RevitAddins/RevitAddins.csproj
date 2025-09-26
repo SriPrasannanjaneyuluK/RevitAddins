@@ -88,6 +88,7 @@
     <Compile Include="src\Application\Commands\Helpers\CADSelectionFilter.cs" />
     <Compile Include="src\Application\Commands\Helpers\LevelUtils.cs" />
     <Compile Include="src\Application\Commands\Helpers\PipeUtils.cs" />
+    <Compile Include="src\Application\Commands\Helpers\SystemTypeUtils.cs" />
     <Compile Include="src\Panels\DocumentToolsPanel.cs" />
     <Compile Include="src\Panels\FireModelingPanel.cs" />
     <Compile Include="src\Panels\GeneralToolsPanel.cs" />

@@ -85,7 +85,7 @@ namespace RevitAddins.UI
         /// - systemTypes: array of piping system type names
         /// </summary>
         public FirePipeSettingsForm(Document doc, string cadElementId, string[] layers,
-            Dictionary<string, ElementId> pipeDict, string[] systemTypes)
+                                    Dictionary<string, ElementId> pipeDict)
         {
             _doc = doc;
             InitializeComponent();
@@ -102,9 +102,10 @@ namespace RevitAddins.UI
             pipeTypeCombo.Items.AddRange(_pipeDict.Keys.ToArray());
             if (pipeTypeCombo.Items.Count > 0) pipeTypeCombo.SelectedIndex = 0;
 
-            // system types
-            systemTypeCombo.Items.AddRange(systemTypes ?? new string[0]);
+            string[] systemTypeNames = SystemTypeUtils.GetSystemTypeNames(_doc);
+            systemTypeCombo.Items.AddRange(systemTypeNames);
             if (systemTypeCombo.Items.Count > 0) systemTypeCombo.SelectedIndex = 0;
+
 
             // levels via helper
             _levelDict = LevelUtils.GetLevelDisplayNames(_doc) ?? new Dictionary<string, ElementId>();
